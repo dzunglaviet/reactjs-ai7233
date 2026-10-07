@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import EmptyState from '../components/EmptyState.jsx'
 import ErrorBox from '../components/ErrorBox.jsx'
 import ExerciseLayout from '../components/ExerciseLayout.jsx'
 import LoginForm from '../components/LoginForm.jsx'
 import Spinner from '../components/Spinner.jsx'
-import { fetchCurrentUser, login } from '../services/authService.js'
+import { AuthContext } from '../context/authContext.js'
 import { fetchUserCarts } from '../services/cartService.js'
 import { fetchProductById } from '../services/productService.js'
 import { money } from '../utils/format.js'
@@ -12,23 +12,31 @@ import { money } from '../utils/format.js'
 // ---------------------------------------------------------------------------
 // CÂU 10 (tổng hợp) — Đăng nhập, lấy giỏ hàng thật, ghép thêm dữ liệu tồn kho.
 //
-// Toàn bộ state nằm ngay trong component này bằng useState: token, userInfo,
-// dữ liệu giỏ, cùng các cờ loading/error. Không Context, không reducer.
+// Phân chia trách nhiệm:
+//   AuthContext (useReducer)  : isLoggedIn, userInfo, token, login, logout
+//   CartSummary (useState)    : dữ liệu giỏ hàng của riêng màn hình này
+//   LoginForm                 : chỉ nhận callback, không biết gì về token
 //
-// Đổi lại: nếu sau này sidebar cũng cần biết "đã đăng nhập chưa", thì state này
-// phải được đẩy lên tổ tiên chung của hai nhánh và truyền props xuống — đó đúng
-// là lúc Context trở nên đáng dùng. Bản đầy đủ của dự án làm theo cách đó.
+// State đăng nhập nằm ở Context vì nó TOÀN CỤC — ô trạng thái ở sidebar và cổng
+// đăng nhập của Câu 9 cũng đọc nó, mà không có props nào nối ba chỗ đó với nhau.
+// Còn dữ liệu giỏ hàng chỉ màn hình này cần nên để useState tại chỗ. Không phải
+// cái gì cũng tống hết vào Context.
 //
 // Bảy trạng thái phải xử lý: chưa đăng nhập / đang đăng nhập / sai mật khẩu /
 // đang tải giỏ / giỏ trống / một dòng lỗi tồn kho / tải xong.
 // ---------------------------------------------------------------------------
 
 function CartSummary() {
-  // --- State đăng nhập ---
-  const [token, setToken] = useState(null)
-  const [userInfo, setUserInfo] = useState(null)
-  const [loggingIn, setLoggingIn] = useState(false)
-  const [loginError, setLoginError] = useState(null)
+  // --- Đăng nhập: lấy hết từ Context, không một useState nào cho token ---
+  const {
+    isLoggedIn,
+    userInfo,
+    token,
+    loading: loggingIn,
+    error: loginError,
+    login,
+    logout,
+  } = useContext(AuthContext)
 
   // --- State giỏ hàng ---
   const [lines, setLines] = useState([])
@@ -36,44 +44,19 @@ function CartSummary() {
   const [loadingCart, setLoadingCart] = useState(false)
   const [cartError, setCartError] = useState(null)
 
-  // isLoggedIn là giá trị DẪN XUẤT từ userInfo -> không cần một ô state riêng.
-  // Thêm ô state thứ hai cho cùng một sự thật là tự tạo ra cơ hội để chúng lệch nhau.
-  const isLoggedIn = Boolean(userInfo)
-
   async function handleLogin(username, password) {
-    setLoggingIn(true)
-    setLoginError(null)
-
-    try {
-      const auth = await login({ username, password })
-
-      // Trường trả về tên là accessToken, KHÔNG phải token.
-      // Dùng nhầm sẽ cho "Bearer undefined" và một lỗi 401 rất khó hiểu.
-      const accessToken = auth.accessToken
-
-      // Gọi /auth/me kèm Bearer token để chứng minh token thật sự dùng được.
-      const user = await fetchCurrentUser(accessToken)
-
-      setToken(accessToken)
-      setUserInfo(user)
-
-      // Có user.id rồi thì tải giỏ hàng luôn. Truyền user.id trực tiếp chứ
-      // KHÔNG đọc userInfo — setState không cập nhật biến ngay, dòng dưới vẫn
-      // thấy giá trị cũ (null).
-      await loadCart(user.id)
-    } catch (err) {
-      setLoginError(err.message)
-    } finally {
-      setLoggingIn(false)
-    }
+    // login() của AuthProvider trả về userInfo khi thành công, null khi thất bại —
+    // nhờ vậy ở đây biết có nên tải giỏ hàng tiếp hay không, mà không phải tự đọc
+    // state (setState không cập nhật biến ngay, dòng dưới vẫn thấy giá trị cũ).
+    const user = await login(username, password)
+    if (user) await loadCart(user.id)
   }
 
   function handleLogout() {
-    setToken(null)
-    setUserInfo(null)
     setLines([])
     setCartTotals(null)
     setCartError(null)
+    logout()
   }
 
   async function loadCart(userId) {
@@ -232,9 +215,9 @@ export default function Q10UserCart() {
   return (
     <ExerciseLayout
       number={10}
-      title="Đăng nhập (Bearer token) và Promise.allSettled"
-      brief="Đăng nhập lấy accessToken, gọi /auth/me để kiểm chứng token, rồi tải /carts/user/:id và ghép thêm tồn kho cho từng dòng bằng các request chạy song song."
-      highlight="Tài khoản demo: emilys / emilyspass. Trường token tên là accessToken — không phải token."
+      title="Đăng nhập (useReducer + Context) và Promise.allSettled"
+      brief="State đăng nhập quản lý bằng useReducer trong AuthContext: isLoggedIn, userInfo, token, login, logout. Sau khi đăng nhập, tải /carts/user/:id rồi ghép thêm tồn kho cho từng dòng bằng các request chạy song song."
+      highlight="Đăng nhập xong hãy nhìn sidebar bên trái — nó cập nhật theo mà không hề nhận props từ đây. Đó là Context. Tài khoản demo: emilys / emilyspass; trường token tên là accessToken, không phải token."
     >
       <CartSummary />
     </ExerciseLayout>

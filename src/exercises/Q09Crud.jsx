@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import ErrorBox from '../components/ErrorBox.jsx'
 import ExerciseLayout from '../components/ExerciseLayout.jsx'
 import ProductForm from '../components/ProductForm.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
+import RequireAuth from '../components/RequireAuth.jsx'
 import Spinner from '../components/Spinner.jsx'
+import { AuthContext } from '../context/authContext.js'
 import { deleteProduct, fetchProducts } from '../services/productService.js'
 
 // ---------------------------------------------------------------------------
@@ -15,9 +17,17 @@ import { deleteProduct, fetchProducts } from '../services/productService.js'
 //
 // Danh sách sản phẩm do CrudShop sở hữu. ProductForm chỉ gửi request rồi đẩy
 // kết quả lên qua callback — nó không được tự sửa danh sách của người khác.
+//
+// Ghi dữ liệu là việc cần quyền, nên cả khu vực nằm sau <RequireAuth>. Viết
+// thành component bọc thay vì rải `if (!isLoggedIn) return ...` trong từng màn
+// hình: luật kiểm tra nằm một chỗ, và CrudShop bên trong coi như luôn có người
+// dùng hợp lệ.
 // ---------------------------------------------------------------------------
 
 function CrudShop() {
+  // Không ai truyền userInfo xuống đây — lấy thẳng từ Context.
+  const { userInfo } = useContext(AuthContext)
+
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -91,10 +101,12 @@ function CrudShop() {
 
   return (
     <div className="space-y-5">
-      {/* key đổi là React dựng lại form từ đầu, nên nó tự nạp dữ liệu của sản
-          phẩm vừa bấm Sửa. 'new' cho chế độ thêm mới. */}
+      <p className="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+        Đang thao tác với quyền của <strong>{userInfo?.username}</strong>. Đăng xuất ở
+        sidebar là toàn bộ khu vực này khoá lại — cùng một Context.
+      </p>
+
       <ProductForm
-        key={editingProduct?.id ?? 'new'}
         product={editingProduct}
         onProductCreated={handleProductCreated}
         onProductUpdated={handleProductUpdated}
@@ -125,11 +137,13 @@ export default function Q09Crud() {
   return (
     <ExerciseLayout
       number={9}
-      title="Thêm / sửa / xoá sản phẩm"
-      brief="Một form dùng chung cho cả thêm mới lẫn chỉnh sửa; nút Sửa ở mỗi thẻ nạp sản phẩm vào form, nút Xoá cập nhật giao diện trước rồi mới gọi API và hoàn tác nếu lỗi."
-      highlight="Khi bấm Sửa ở sản phẩm khác, form phải NẠP LẠI dữ liệu. Cách làm ở đây là đổi prop `key` của form — React huỷ component cũ và dựng mới, mọi useState bên trong tự khởi tạo lại. Ngắn hơn và ít lỗi hơn việc tự đồng bộ bằng useEffect."
+      title="Thêm / sửa / xoá sản phẩm — có kiểm tra đăng nhập"
+      brief="Toàn bộ khu vực nằm sau <RequireAuth>. Một form Formik dùng chung cho cả thêm mới lẫn chỉnh sửa; nút Sửa ở mỗi thẻ nạp sản phẩm vào form, nút Xoá cập nhật giao diện trước rồi mới gọi API và hoàn tác nếu lỗi."
+      highlight="enableReinitialize của Formik là thứ khiến form nạp lại dữ liệu khi bấm Sửa ở sản phẩm khác — thiếu nó, form giữ nguyên sản phẩm cũ."
     >
-      <CrudShop />
+      <RequireAuth message="Thêm, sửa và xoá sản phẩm là thao tác ghi dữ liệu, cần đăng nhập trước. Dùng tài khoản demo bên dưới.">
+        <CrudShop />
+      </RequireAuth>
     </ExerciseLayout>
   )
 }

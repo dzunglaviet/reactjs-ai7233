@@ -1,65 +1,41 @@
-import { useEffect, useState } from 'react'
-import { createProduct, fetchCategories, updateProduct } from '../services/productService.js'
+import { useFormik } from 'formik'
+import { useEffect, useRef, useState } from 'react'
+import * as Yup from 'yup'
+import {
+  createProduct,
+  fetchCategories,
+  updateProduct,
+} from '../services/productService.js'
 
 // ---------------------------------------------------------------------------
-// Form sản phẩm dùng CHUNG cho cả thêm mới và chỉnh sửa — viết tay bằng useState.
+// Form sản phẩm dùng CHUNG cho cả thêm mới và chỉnh sửa (Formik + Yup, Buổi 6).
 //
-//   product = null    -> chế độ THÊM MỚI  (POST /products/add)
-//   product = {...}   -> chế độ SỬA       (PUT  /products/{id})
+//   product = null         -> chế độ THÊM MỚI  (POST /products/add)
+//   product = {...}        -> chế độ SỬA       (PUT  /products/{id})
 //
 // Một form cho hai việc thay vì hai component gần giống nhau: luật kiểm tra dữ
 // liệu, layout và thông báo lỗi chỉ viết một lần.
 //
-// Ba thứ một form tự viết nào cũng phải có, và đây là lý do các thư viện form
-// tồn tại:
-//   1. values   — giá trị đang gõ
-//   2. touched  — ô nào người dùng đã chạm vào (để không đỏ lè ngay từ đầu)
-//   3. errors   — kết quả kiểm tra, tính lại ở MỖI lần render
+// CHÌA KHOÁ là `enableReinitialize: true`. Mặc định Formik chỉ đọc
+// initialValues ĐÚNG MỘT LẦN lúc mount; không bật cờ này thì bấm "Sửa" ở sản
+// phẩm khác, form vẫn giữ nguyên dữ liệu cũ — lỗi rất hay gặp.
 //
 // Form tự gửi request nhưng KHÔNG tự sửa danh sách: nó đẩy kết quả lên cha qua
 // onProductCreated / onProductUpdated. Cha mới là nơi sở hữu mảng sản phẩm.
-//
-// CÁCH FORM NẠP LẠI DỮ LIỆU KHI BẤM "SỬA" Ở SẢN PHẨM KHÁC:
-// không dùng useEffect để gán lại state. Cha đặt `key={editingProduct?.id}`
-// cho form (xem Q09Crud.jsx) — key đổi là React HUỶ component cũ và dựng mới,
-// mọi useState bên trong tự khởi tạo lại từ props. Đây là cách React khuyên
-// dùng để "reset state theo prop", và nó ngắn hơn hẳn việc tự đồng bộ bằng
-// effect (oxlint cũng cảnh báo react/set-state-in-effect nếu làm cách kia).
 // ---------------------------------------------------------------------------
 
-const EMPTY = { title: '', price: '', category: '', description: '' }
-
-/** Đổi một sản phẩm thành giá trị ban đầu của form. */
-function toValues(product) {
-  if (!product) return EMPTY
-  return {
-    title: product.title ?? '',
-    price: product.price ?? '',
-    category: product.category ?? '',
-    description: product.description ?? '',
-  }
-}
-
-/**
- * Hàm kiểm tra THUẦN: cùng input thì cùng output, không chạm vào state.
- * Nhờ vậy gọi được ở bất cứ đâu và test được mà không cần React.
- */
-function validate(values) {
-  const errors = {}
-
-  if (!values.title.trim()) errors.title = 'Tên sản phẩm không được để trống'
-  else if (values.title.trim().length < 3) errors.title = 'Tên sản phẩm phải từ 3 ký tự'
-
-  if (String(values.price).trim() === '') errors.price = 'Giá không được để trống'
-  else if (!Number.isFinite(Number(values.price))) errors.price = 'Giá phải là số'
-  else if (Number(values.price) <= 0) errors.price = 'Giá phải lớn hơn 0'
-
-  if (!values.category) errors.category = 'Hãy chọn một danh mục'
-
-  if (values.description.length > 200) errors.description = 'Mô tả tối đa 200 ký tự'
-
-  return errors
-}
+const productSchema = Yup.object({
+  title: Yup.string()
+    .trim()
+    .required('Tên sản phẩm không được để trống')
+    .min(3, 'Tên sản phẩm phải từ 3 ký tự'),
+  price: Yup.number()
+    .typeError('Giá phải là số')
+    .required('Giá không được để trống')
+    .positive('Giá phải lớn hơn 0'),
+  category: Yup.string().required('Hãy chọn một danh mục'),
+  description: Yup.string().max(200, 'Mô tả tối đa 200 ký tự'),
+})
 
 export default function ProductForm({
   product = null,
@@ -69,14 +45,13 @@ export default function ProductForm({
 }) {
   const isEditing = Boolean(product)
 
-  // Khởi tạo thẳng từ props — không cần effect đồng bộ, vì cha đổi `key` là
-  // component này được dựng lại từ đầu.
-  const [values, setValues] = useState(() => toValues(product))
-  const [touched, setTouched] = useState({})
-  const [submitting, setSubmitting] = useState(false)
   const [categories, setCategories] = useState([])
   const [notice, setNotice] = useState(null)
   const [submitError, setSubmitError] = useState(null)
+
+  // useRef trỏ tới ô input thật trong DOM — dùng để focus và cuộn tới form.
+  const titleInputRef = useRef(null)
+  const formRef = useRef(null)
 
   useEffect(() => {
     fetchCategories()
@@ -84,122 +59,119 @@ export default function ProductForm({
       .catch(() => setCategories([]))
   }, [])
 
-  // errors là GIÁ TRỊ DẪN XUẤT -> tính lúc render, không cho vào state.
-  // Cho vào state là phải nhớ gọi setErrors ở mọi chỗ sửa values, quên một chỗ
-  // là lỗi hiện sai.
-  const errors = validate(values)
-  const hasError = Object.keys(errors).length > 0
+  // Bấm "Sửa" ở một thẻ sản phẩm nằm tít dưới lưới: kéo màn hình về form và đặt
+  // sẵn con trỏ vào ô đầu tiên, người dùng khỏi phải tự tìm.
+  useEffect(() => {
+    if (!isEditing) return
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    titleInputRef.current?.focus()
+  }, [isEditing, product?.id])
 
-  /** Chỉ báo lỗi khi ô đó đã được chạm vào. */
-  function errorOf(field) {
-    return touched[field] ? errors[field] : null
-  }
+  const formik = useFormik({
+    // Bật cờ này để form nạp lại dữ liệu mỗi khi `product` đổi.
+    enableReinitialize: true,
+    initialValues: {
+      title: product?.title ?? '',
+      price: product?.price ?? '',
+      category: product?.category ?? '',
+      description: product?.description ?? '',
+    },
+    validationSchema: productSchema,
+    onSubmit: async (values, { resetForm }) => {
+      setSubmitError(null)
+      setNotice(null)
 
-  function handleChange(event) {
-    const { name, value } = event.target
-    setValues((prev) => ({ ...prev, [name]: value }))
-  }
-
-  function handleBlur(event) {
-    setTouched((prev) => ({ ...prev, [event.target.name]: true }))
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault() // chặn trình duyệt tải lại trang — mặc định của <form>
-
-    // Bấm Gửi mà chưa chạm ô nào: đánh dấu tất cả là touched để lỗi hiện ra hết.
-    setTouched({ title: true, price: true, category: true, description: true })
-    if (hasError) return
-
-    setSubmitError(null)
-    setNotice(null)
-    setSubmitting(true)
-
-    const payload = {
-      title: values.title.trim(),
-      price: Number(values.price),
-      category: values.category,
-      description: values.description.trim(),
-    }
-
-    try {
-      if (isEditing) {
-        const updated = await updateProduct(product.id, payload)
-        // API chỉ trả về các trường vừa gửi -> trộn với dữ liệu cũ để không
-        // mất thumbnail, rating, stock...
-        onProductUpdated({ ...product, ...updated })
-        setNotice(`Đã cập nhật "${payload.title}"`)
-      } else {
-        const created = await createProduct(payload)
-        onProductCreated(created)
-        setNotice(`Đã tạo "${created.title}" với id ${created.id}`)
-        setValues(EMPTY)
-        setTouched({})
+      const payload = {
+        title: values.title.trim(),
+        price: Number(values.price),
+        category: values.category,
+        description: values.description.trim(),
       }
-    } catch (err) {
-      setSubmitError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+
+      try {
+        if (isEditing) {
+          const updated = await updateProduct(product.id, payload)
+          // API chỉ trả về các trường vừa gửi -> trộn với dữ liệu cũ để không
+          // mất thumbnail, rating, stock...
+          onProductUpdated({ ...product, ...updated })
+          setNotice(`Đã cập nhật "${payload.title}"`)
+        } else {
+          const created = await createProduct(payload)
+          onProductCreated(created)
+          setNotice(`Đã tạo "${created.title}" với id ${created.id}`)
+          resetForm()
+          titleInputRef.current?.focus()
+        }
+      } catch (err) {
+        setSubmitError(err.message)
+      }
+    },
+  })
 
   function handleCancel() {
     setNotice(null)
     setSubmitError(null)
-    setValues(EMPTY)
-    setTouched({})
+    formik.resetForm()
     onCancelEdit()
   }
 
-  function fieldClass(field) {
-    return `w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none ${
-      errorOf(field) ? 'border-rose-400 focus:border-rose-500' : 'border-slate-300 focus:border-blue-500'
+  /** Chỉ báo lỗi khi ô đó đã được chạm vào — đỡ đỏ lè ngay từ đầu. */
+  const errorOf = (field) => (formik.touched[field] ? formik.errors[field] : null)
+
+  const fieldClass = (field) =>
+    `w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none ${
+      errorOf(field)
+        ? 'border-rose-400 focus:border-rose-500'
+        : 'border-slate-300 focus:border-blue-500'
     }`
-  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold text-slate-900">
+    <form
+      ref={formRef}
+      onSubmit={formik.handleSubmit}
+      noValidate // tắt validate mặc định của trình duyệt, để Yup lo toàn bộ
+      className={`space-y-3 rounded-xl border bg-white p-5 ${
+        isEditing ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-slate-900">
           {isEditing ? `Sửa sản phẩm #${product.id}` : 'Thêm sản phẩm mới'}
-        </h2>
+        </h3>
         {isEditing && (
           <button
             type="button"
             onClick={handleCancel}
-            className="text-xs text-slate-500 hover:text-slate-900 hover:underline"
+            className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
           >
-            Huỷ, quay về thêm mới
+            Huỷ, quay lại thêm mới
           </button>
         )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label htmlFor="title" className="mb-1 block text-xs text-slate-500">
-            Tên sản phẩm
-          </label>
           <input
-            id="title"
+            ref={titleInputRef}
             name="title"
-            value={values.title}
-            onChange={handleChange}
-            onBlur={handleBlur}
+            value={formik.values.title}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur} // đánh dấu touched khi rời khỏi ô
+            placeholder="Tên sản phẩm *"
             className={fieldClass('title')}
           />
           {errorOf('title') && <p className="mt-1 text-xs text-rose-600">{errorOf('title')}</p>}
         </div>
 
         <div>
-          <label htmlFor="price" className="mb-1 block text-xs text-slate-500">
-            Giá ($)
-          </label>
           <input
-            id="price"
             name="price"
-            value={values.price}
-            onChange={handleChange}
-            onBlur={handleBlur}
+            type="number"
+            step="0.01"
+            value={formik.values.price}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            placeholder="Giá *"
             className={fieldClass('price')}
           />
           {errorOf('price') && <p className="mt-1 text-xs text-rose-600">{errorOf('price')}</p>}
@@ -207,23 +179,17 @@ export default function ProductForm({
       </div>
 
       <div>
-        <label htmlFor="category" className="mb-1 block text-xs text-slate-500">
-          Danh mục
-        </label>
         <select
-          id="category"
           name="category"
-          value={values.category}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          value={formik.values.category}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
           className={fieldClass('category')}
         >
-          <option value="">— Chọn danh mục —</option>
-          {/* /products/categories trả về OBJECT { slug, name, url }:
-              hiển thị name, nhưng gửi đi slug. */}
-          {categories.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
+          <option value="">-- Chọn danh mục * --</option>
+          {categories.map((cat) => (
+            <option key={cat.slug} value={cat.slug}>
+              {cat.name}
             </option>
           ))}
         </select>
@@ -231,16 +197,13 @@ export default function ProductForm({
       </div>
 
       <div>
-        <label htmlFor="description" className="mb-1 block text-xs text-slate-500">
-          Mô tả ({values.description.length}/200)
-        </label>
         <textarea
-          id="description"
           name="description"
           rows={2}
-          value={values.description}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          value={formik.values.description}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          placeholder="Mô tả"
           className={fieldClass('description')}
         />
         {errorOf('description') && (
@@ -248,16 +211,36 @@ export default function ProductForm({
         )}
       </div>
 
-      {notice && <p className="text-sm text-emerald-700">{notice}</p>}
       {submitError && <p className="text-sm text-rose-600">{submitError}</p>}
+      {notice && <p className="text-sm text-emerald-600">{notice}</p>}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-300"
-      >
-        {submitting ? 'Đang gửi...' : isEditing ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={formik.isSubmitting}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-300"
+        >
+          {formik.isSubmitting
+            ? 'Đang gửi...'
+            : isEditing
+              ? 'Lưu thay đổi'
+              : 'Thêm sản phẩm'}
+        </button>
+
+        {isEditing && (
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Huỷ
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs text-slate-400">
+        API chỉ giả lập: tải lại trang là mọi thay đổi biến mất.
+      </p>
     </form>
   )
 }

@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "formik": "^2.4.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router": "^8.4.0"
+    "react-router": "^8.4.0",
+    "yup": "^1.7.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

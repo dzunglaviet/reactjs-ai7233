@@ -1,5 +1,6 @@
 import { EXERCISE_ROUTES } from '../routes/navigation.js'
 import { API } from '../services/httpClient.js'
+import AuthStatus from './AuthStatus.jsx'
 import NavItem from './NavItem.jsx'
 
 /** Cột điều hướng bên trái — chỉ hiện từ breakpoint lg trở lên. */
@@ -34,6 +35,9 @@ export default function Sidebar() {
             ))}
           </nav>
         </div>
+
+        {/* Đọc AuthContext ở một nhánh rất xa chỗ đăng nhập (Câu 9, Câu 10) */}
+        <AuthStatus />
 
         <p className="rounded-lg bg-slate-100 px-3 py-2 font-mono text-[11px] break-all text-slate-500">
           API: {API}

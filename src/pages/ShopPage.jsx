@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Route, Routes } from 'react-router'
 import CartPanel from '../components/CartPanel.jsx'
 import CategoryFilter from '../components/CategoryFilter.jsx'
@@ -21,6 +21,30 @@ import ProductDetailPage from './ProductDetailPage.jsx'
 
 const PAGE_SIZE = 12
 const MAX_QTY_WHEN_UNKNOWN = 99
+
+// Có đánh số phiên bản: sau này đổi cấu trúc dòng giỏ hàng thì tăng lên :v2,
+// dữ liệu cũ bị bỏ qua thay vì gây lỗi.
+const CART_STORAGE_KEY = 'dummyjson:cart:v1'
+
+/**
+ * Đọc giỏ hàng đã lưu. Trả về [] nếu chưa có gì hoặc dữ liệu hỏng.
+ *
+ * Bọc try/catch vì có ba thứ có thể ném lỗi: localStorage bị chặn (chế độ ẩn
+ * danh, trình duyệt khoá cookie), JSON.parse gặp dữ liệu hỏng, và dữ liệu cũ do
+ * phiên bản app trước ghi ra. Một cái throw ở đây đủ làm trắng cả app.
+ */
+function readStoredCart() {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY)
+    if (raw === null) return []
+    const parsed = JSON.parse(raw)
+    // Dữ liệu trong localStorage là dữ liệu NGOÀI tầm kiểm soát — người dùng
+    // sửa được bằng DevTools. Kiểm tra lại hình dạng trước khi tin.
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
 
 function ShopList({ cart }) {
   // --- Bộ lọc (state do CHA sở hữu) ---
@@ -155,7 +179,31 @@ export default function ShopPage() {
   // Nếu để trong ShopList thì mỗi lần mở trang chi tiết rồi quay lại, component
   // đó bị unmount và state giỏ hàng mất sạch. Đặt state cao hơn chỗ điều hướng
   // là cách giữ giỏ hàng sống qua mọi lần chuyển trang.
-  const [items, setItems] = useState([])
+  //
+  // LAZY INITIALIZER: useState(readStoredCart) chứ không phải
+  // useState(readStoredCart()). Viết cách sau thì localStorage bị đọc lại ở MỌI
+  // lần render, dù giá trị chỉ được dùng đúng lần đầu.
+  const [items, setItems] = useState(readStoredCart)
+
+  // Mỗi lần giỏ hàng đổi thì ghi lại. Ghi là việc với "thế giới bên ngoài"
+  // (localStorage không thuộc React), nên nó thuộc về useEffect.
+  //
+  // Bỏ qua lần render ĐẦU TIÊN: lúc đó chưa có gì thay đổi, ghi lại chỉ là ghi
+  // đúng thứ vừa đọc lên — vô ích, và trong một số tình huống còn đè lên dữ
+  // liệu cũ bằng giá trị mặc định.
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      // Hết dung lượng hoặc bị chặn: app vẫn chạy, chỉ là không lưu được.
+      // Không ném lỗi ra ngoài — mất khả năng lưu không đáng để làm vỡ giao diện.
+    }
+  }, [items])
 
   function addToCart(product) {
     setItems((prev) => {
@@ -201,7 +249,11 @@ export default function ShopPage() {
 
   // Bốn hàm trên giống y hệt Câu 8 — cố ý lặp lại trong bản đơn giản này, để
   // mỗi bài đọc độc lập được. Đúng lúc thấy việc copy này khó chịu là lúc nên
-  // gom chúng vào một custom hook (useCart) như bản đầy đủ đã làm.
+  // gom chúng vào một custom hook (useCart) như bản đầy đủ đã làm. Phần
+  // localStorage ở trên cũng vậy: bản đầy đủ gói nó thành useLocalStorageState.
+  //
+  // Giỏ ở Câu 8 cố ý KHÔNG lưu localStorage, để hai nơi không dùng chung dữ
+  // liệu khi demo trên lớp.
   const cart = { items, addToCart, changeQty, removeFromCart, clearCart }
 
   return (
