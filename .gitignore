@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Thư viện và kết quả build — luôn sinh lại được từ source, không commit
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# Cache của Vite / oxlint / TypeScript
+.vite/
+.cache/
+.oxlintcache
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# BIẾN MÔI TRƯỜNG — QUAN TRỌNG NHẤT
+# File .env thật có thể chứa URL nội bộ, khoá API... nên không bao giờ commit.
+# Riêng .env.example thì PHẢI commit: đó là bản mẫu để người clone về biết
+# dự án cần những biến gì. Dấu ! là "loại trừ khỏi danh sách bỏ qua".
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Log
+# ---------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------------------------------------------------------------------------
+# File rác do hệ điều hành sinh ra
+# ---------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Cấu hình riêng của từng người, từng máy — không áp đặt cho cả nhóm
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.zed/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.local
+
+# ---------------------------------------------------------------------------
+# Kết quả test / coverage
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+
+# ---------------------------------------------------------------------------
+# Thư mục chứa component cũ đã bỏ, giữ tạm để xoá bằng tay
+# ---------------------------------------------------------------------------
+_to_delete/
