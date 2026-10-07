@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, Route, Routes, useParams } from 'react-router'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import ProductDetailView from '../components/product/ProductDetailView.jsx'
-import ProductGrid from '../components/product/ProductGrid.jsx'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import ProductDetailView from '../components/ProductDetailView.jsx'
+import ProductGrid from '../components/ProductGrid.jsx'
 import { fetchProductById, fetchProducts } from '../services/productService.js'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 7 — Trang chi tiết /bai/7/:id, tách rõ trách nhiệm:
@@ -32,7 +33,7 @@ function ProductListPage() {
 
   return (
     <>
-      <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">Bấm vào tên sản phẩm để mở trang chi tiết.</p>
+      <p className="mb-4 text-sm text-slate-500">Bấm vào tên sản phẩm để mở trang chi tiết.</p>
       <ProductGrid products={products} detailBasePath="/bai/7" />
     </>
   )
@@ -78,7 +79,7 @@ function ProductDetailPage() {
     return (
       <div className="space-y-4">
         <ErrorBox message={`Không tìm thấy sản phẩm (${error})`} />
-        <Link to="/bai/7" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+        <Link to="/bai/7" className="text-sm text-blue-600 hover:underline">
           ← Quay lại danh sách
         </Link>
       </div>
@@ -87,7 +88,7 @@ function ProductDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link to="/bai/7" className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">
+      <Link to="/bai/7" className="inline-block text-sm text-blue-600 hover:underline">
         ← Quay lại danh sách
       </Link>
       <ProductDetailView product={product} />

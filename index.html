@@ -4,40 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <title>Bài giải DummyJSON — ReactJS AI7233</title>
-
-    <script>
-      /*
-        CHỐNG "NHÁY TRẮNG" (FOUC) KHI TẢI TRANG.
-
-        ThemeProvider đặt data-theme trong useEffect — nghĩa là SAU khi React
-        dựng xong cây component. Trong khoảng vài chục ms trước đó, trang vẫn
-        đang ở màu sáng: người dùng chọn giao diện tối sẽ thấy màn hình loé
-        trắng một cái rồi mới chuyển tối. Rất khó chịu, và không cách nào sửa
-        được từ bên trong React.
-
-        Cách duy nhất là đặt thuộc tính TRƯỚC khi React chạy. Script này nằm
-        thẳng trong <head>, không có type="module" nên nó chạy ĐỒNG BỘ, chặn
-        việc vẽ trang lại cho tới khi xong.
-
-        Hai điểm phải để ý:
-         - Key và cách lưu phải GIỐNG HỆT ThemeProvider. useLocalStorageState
-           lưu bằng JSON.stringify, nên giá trị trong localStorage là chuỗi có
-           dấu nháy: "dark". Vì vậy ở đây phải JSON.parse, không đọc thô.
-         - Bọc try/catch: localStorage có thể bị chặn. Lỗi ở script chặn render
-           này sẽ làm trắng cả trang.
-      */
-      try {
-        var saved = JSON.parse(localStorage.getItem('dummyjson:theme:v1'))
-        var useDark =
-          saved === 'dark' ||
-          (saved == null && window.matchMedia('(prefers-color-scheme: dark)').matches)
-        document.documentElement.setAttribute('data-theme', useDark ? 'dark' : 'light')
-      } catch (e) {
-        document.documentElement.setAttribute('data-theme', 'light')
-      }
-    </script>
+    <title>Bài giải DummyJSON (bản đơn giản) — ReactJS AI7233</title>
   </head>
   <body>
     <div id="root"></div>

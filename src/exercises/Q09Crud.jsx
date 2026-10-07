@@ -1,26 +1,23 @@
 import { useEffect, useState } from 'react'
-import RequireAuth from '../components/auth/RequireAuth.jsx'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import ProductForm from '../components/product/ProductForm.jsx'
-import ProductGrid from '../components/product/ProductGrid.jsx'
-import useAuth from '../hooks/useAuth.js'
+import ErrorBox from '../components/ErrorBox.jsx'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import ProductForm from '../components/ProductForm.jsx'
+import ProductGrid from '../components/ProductGrid.jsx'
+import Spinner from '../components/Spinner.jsx'
 import { deleteProduct, fetchProducts } from '../services/productService.js'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
 
 // ---------------------------------------------------------------------------
-// CÂU 9 — Thêm / sửa / xoá với API GIẢ LẬP, và phải ĐĂNG NHẬP mới dùng được.
+// CÂU 9 — Thêm / sửa / xoá với API GIẢ LẬP.
 //
 // DummyJSON trả về object trông rất thật (id mới, isDeleted: true) nhưng không
 // lưu gì cả. Vì vậy sau mỗi thao tác phải tự cập nhật state cục bộ; gọi lại
 // /products sẽ thấy danh sách y như cũ và thay đổi "biến mất".
 //
-// Cổng đăng nhập đặt ở <RequireAuth> bọc ngoài, nên component CrudShop bên
-// trong coi như luôn có người dùng hợp lệ — không phải rải if/else kiểm tra.
+// Danh sách sản phẩm do CrudShop sở hữu. ProductForm chỉ gửi request rồi đẩy
+// kết quả lên qua callback — nó không được tự sửa danh sách của người khác.
 // ---------------------------------------------------------------------------
 
 function CrudShop() {
-  const { userInfo } = useAuth()
-
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -57,6 +54,9 @@ function CrudShop() {
   /**
    * Xoá kiểu OPTIMISTIC: bỏ khỏi giao diện NGAY, gọi API sau.
    * Hỏng thì trả sản phẩm về đúng vị trí cũ và báo lỗi.
+   *
+   * Vì sao không chờ API xong mới xoá? Vì người dùng phải đợi, và 99% trường hợp
+   * là thành công. Đổi lại, phải có đường hoàn tác cho 1% còn lại.
    */
   async function handleDelete(id) {
     if (!window.confirm('Xoá sản phẩm này?')) return
@@ -91,12 +91,10 @@ function CrudShop() {
 
   return (
     <div className="space-y-5">
-      <p className="rounded-lg bg-emerald-50 dark:bg-emerald-950 px-4 py-2 text-sm text-emerald-800 dark:text-emerald-200">
-        Đang thao tác với quyền của <strong>{userInfo?.username}</strong>. Đăng xuất ở sidebar
-        là toàn bộ khu vực này khoá lại.
-      </p>
-
+      {/* key đổi là React dựng lại form từ đầu, nên nó tự nạp dữ liệu của sản
+          phẩm vừa bấm Sửa. 'new' cho chế độ thêm mới. */}
       <ProductForm
+        key={editingProduct?.id ?? 'new'}
         product={editingProduct}
         onProductCreated={handleProductCreated}
         onProductUpdated={handleProductUpdated}
@@ -104,7 +102,7 @@ function CrudShop() {
       />
 
       {notice && (
-        <p className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-2 text-sm text-slate-700 dark:text-slate-300">{notice}</p>
+        <p className="rounded-lg bg-slate-100 px-4 py-2 text-sm text-slate-700">{notice}</p>
       )}
       {error && <ErrorBox message={error} />}
 
@@ -127,13 +125,11 @@ export default function Q09Crud() {
   return (
     <ExerciseLayout
       number={9}
-      title="Thêm / sửa / xoá sản phẩm — có kiểm tra đăng nhập"
-      brief="Toàn bộ khu vực nằm sau <RequireAuth>. Một form Formik dùng chung cho cả thêm mới lẫn chỉnh sửa; nút Sửa ở mỗi thẻ nạp sản phẩm vào form, nút Xoá cập nhật giao diện trước rồi mới gọi API và hoàn tác nếu lỗi."
-      highlight="enableReinitialize của Formik là thứ khiến form nạp lại dữ liệu khi bấm Sửa ở sản phẩm khác — thiếu nó, form giữ nguyên sản phẩm cũ."
+      title="Thêm / sửa / xoá sản phẩm"
+      brief="Một form dùng chung cho cả thêm mới lẫn chỉnh sửa; nút Sửa ở mỗi thẻ nạp sản phẩm vào form, nút Xoá cập nhật giao diện trước rồi mới gọi API và hoàn tác nếu lỗi."
+      highlight="Khi bấm Sửa ở sản phẩm khác, form phải NẠP LẠI dữ liệu. Cách làm ở đây là đổi prop `key` của form — React huỷ component cũ và dựng mới, mọi useState bên trong tự khởi tạo lại. Ngắn hơn và ít lỗi hơn việc tự đồng bộ bằng useEffect."
     >
-      <RequireAuth message="Thêm, sửa và xoá sản phẩm là thao tác ghi dữ liệu, cần đăng nhập trước. Dùng tài khoản demo bên dưới.">
-        <CrudShop />
-      </RequireAuth>
+      <CrudShop />
     </ExerciseLayout>
   )
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../services/httpClient.js'
 import { money } from '../utils/format.js'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import { Badge, ErrorBox, Spinner } from '../components/ui/index.js'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import Badge from '../components/Badge.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 2 — Tách thành component phức hợp:
@@ -22,25 +24,25 @@ function ProductCard({ title, price, thumbnail, rating, stock, availabilityStatu
   const outOfStock = stock === 0
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition hover:shadow-md">
-      <div className="flex h-40 items-center justify-center bg-slate-50 dark:bg-slate-900 p-3">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:shadow-md">
+      <div className="flex h-40 items-center justify-center bg-slate-50 p-3">
         {thumbnail ? (
           <img src={thumbnail} alt={title} className="h-full object-contain" loading="lazy" />
         ) : (
-          <span className="text-slate-400 dark:text-slate-500">—</span>
+          <span className="text-slate-400">—</span>
         )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 font-medium text-slate-900 dark:text-slate-100">{title ?? '—'}</h3>
+        <h3 className="line-clamp-2 font-medium text-slate-900">{title ?? '—'}</h3>
 
-        <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+        <p className="text-lg font-semibold text-slate-900">
           {price == null ? '—' : money(price, currency)}
         </p>
 
         <div className="mt-auto flex items-center justify-between">
           {/* rating của DummyJSON là MỘT SỐ, không phải object { rate, count } */}
-          <span className="text-sm text-amber-600 dark:text-amber-400">
+          <span className="text-sm text-amber-600">
             {rating != null ? `${rating} ★` : '—'}
           </span>
 
@@ -52,7 +54,7 @@ function ProductCard({ title, price, thumbnail, rating, stock, availabilityStatu
         </div>
 
         {availabilityStatus && (
-          <p className="text-xs text-slate-400 dark:text-slate-500">{availabilityStatus}</p>
+          <p className="text-xs text-slate-400">{availabilityStatus}</p>
         )}
       </div>
     </article>

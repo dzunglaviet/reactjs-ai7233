@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../services/httpClient.js'
-import ProductCard from '../components/product/ProductCard.jsx'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import { EmptyState, ErrorBox, Spinner } from '../components/ui/index.js'
+import ProductCard from '../components/ProductCard.jsx'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 5 — Sắp xếp phía server + một useEffect duy nhất với dependency đủ.
@@ -23,7 +25,7 @@ function SortSelect({ value, onChange }) {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm outline-none focus:border-blue-500"
+      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
     >
       {SORT_OPTIONS.map((o) => (
         <option key={o.value} value={o.value}>
@@ -98,7 +100,7 @@ function ShopPage() {
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder="Tìm sản phẩm..."
-          className="flex-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 outline-none focus:border-blue-500"
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500"
         />
         <SortSelect value={sort} onChange={setSort} />
       </div>

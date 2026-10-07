@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../services/httpClient.js'
-import ProductCard from '../components/product/ProductCard.jsx'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import { EmptyState, ErrorBox, Spinner } from '../components/ui/index.js'
+import ProductCard from '../components/ProductCard.jsx'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 4 — Tìm kiếm phía server + debounce.
@@ -20,7 +22,7 @@ function SearchBar({ keyword, onKeywordChange }) {
       value={keyword}
       onChange={(e) => onKeywordChange(e.target.value)}
       placeholder="Tìm sản phẩm... (thử: phone, laptop, watch)"
-      className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900"
+      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
     />
   )
 }
@@ -80,7 +82,7 @@ function ShopPage() {
     <div className="space-y-5">
       <SearchBar keyword={keyword} onKeywordChange={setKeyword} />
 
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <p className="text-sm text-slate-500">
         {keyword.trim()
           ? `Tìm thấy ${total} sản phẩm cho từ khoá '${keyword.trim()}'`
           : `Đang hiển thị ${products.length} / ${total} sản phẩm`}

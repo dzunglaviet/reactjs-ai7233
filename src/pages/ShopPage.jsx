@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Route, Routes } from 'react-router'
-import CartMenu from '../components/cart/CartMenu.jsx'
-import CategoryFilter from '../components/product/CategoryFilter.jsx'
-import Pagination from '../components/product/Pagination.jsx'
-import ProductGrid from '../components/product/ProductGrid.jsx'
-import SearchBar from '../components/product/SearchBar.jsx'
-import SortSelect from '../components/product/SortSelect.jsx'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
-import useCart from '../hooks/useCart.js'
-import useDebouncedValue from '../hooks/useDebouncedValue.js'
+import CartPanel from '../components/CartPanel.jsx'
+import CategoryFilter from '../components/CategoryFilter.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Pagination from '../components/Pagination.jsx'
+import ProductGrid from '../components/ProductGrid.jsx'
+import SearchBar from '../components/SearchBar.jsx'
+import Spinner from '../components/Spinner.jsx'
+import SortSelect from '../components/SortSelect.jsx'
 import { fetchProducts } from '../services/productService.js'
 import ProductDetailPage from './ProductDetailPage.jsx'
 
@@ -21,6 +20,7 @@ import ProductDetailPage from './ProductDetailPage.jsx'
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 12
+const MAX_QTY_WHEN_UNKNOWN = 99
 
 function ShopList({ cart }) {
   // --- Bộ lọc (state do CHA sở hữu) ---
@@ -29,8 +29,15 @@ function ShopList({ cart }) {
   const [sort, setSort] = useState('')
   const [page, setPage] = useState(1)
 
-  // Chỉ gọi API sau khi người dùng ngừng gõ 400ms (Câu 4).
-  const debouncedKeyword = useDebouncedValue(keyword, 400)
+  // --- Debounce ô tìm kiếm, viết thẳng tại đây ---
+  // Mỗi lần `keyword` đổi, hẹn 400ms rồi mới sao sang `debouncedKeyword`.
+  // Người dùng gõ tiếp thì cleanup HUỶ cái hẹn cũ và hẹn lại — nên chỉ lần gõ
+  // cuối cùng mới thật sự gọi API. Thiếu clearTimeout là gõ 10 ký tự gọi 10 lần.
+  const [debouncedKeyword, setDebouncedKeyword] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedKeyword(keyword), 400)
+    return () => clearTimeout(timer)
+  }, [keyword])
 
   // --- Dữ liệu ---
   const [products, setProducts] = useState([])
@@ -40,27 +47,6 @@ function ShopList({ cart }) {
 
   // Giỏ hàng nhận từ ShopPage (xem ghi chú ở dưới về lý do đặt state ở đó).
   const { items, addToCart, changeQty, removeFromCart, clearCart } = cart
-
-  // --- Hai ca dùng useRef đúng nghĩa: thao tác DOM, không liên quan render ---
-  const searchInputRef = useRef(null) // để đặt con trỏ vào ô tìm kiếm khi mở trang
-  const resultsRef = useRef(null) // để cuộn lên đầu danh sách khi sang trang khác
-
-  // Mở trang là gõ tìm được ngay, không phải bấm chuột vào ô input.
-  useEffect(() => {
-    searchInputRef.current?.focus()
-  }, [])
-
-  // Bấm "Sau" ở cuối trang thì trang mới lại bắt đầu từ chỗ đang cuộn — rất khó
-  // chịu. Mỗi lần đổi trang, kéo màn hình về đầu danh sách.
-  // Bỏ qua lần đầu (page === 1 lúc mới vào) để không giật màn hình vô cớ.
-  const isFirstPageRender = useRef(true)
-  useEffect(() => {
-    if (isFirstPageRender.current) {
-      isFirstPageRender.current = false
-      return
-    }
-    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [page])
 
   useEffect(() => {
     // Đổi bộ lọc liên tục sinh ra nhiều request chồng nhau. Cờ `ignore` bảo đảm
@@ -114,65 +100,52 @@ function ShopList({ cart }) {
 
   return (
     <div className="space-y-5">
-      {/* ---------------------------------------------------------------
-          Thanh header dính trên cùng, bố cục quen thuộc của trang bán hàng:
-          tên cửa hàng — ô tìm kiếm — giỏ hàng ở góc phải.
-          `sticky top-0` + `-mx-4 px-4` để nền trải hết chiều ngang khi cuộn.
-      ---------------------------------------------------------------- */}
-      <header className="sticky top-0 z-30 -mx-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-950/90 px-4 py-3 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <h1 className="hidden shrink-0 text-lg font-semibold text-slate-900 dark:text-slate-100 md:block">
-            Cửa hàng
-          </h1>
+      <h1 className="text-xl font-semibold text-slate-900">Cửa hàng</h1>
 
-          <div className="min-w-0 flex-1">
-            <SearchBar
-              ref={searchInputRef}
-              keyword={keyword}
-              onKeywordChange={handleKeyword}
-              placeholder="Tìm sản phẩm... (thử: phone, laptop, watch)"
-            />
-          </div>
-
-          <CartMenu
-            items={items}
-            onChangeQty={changeQty}
-            onRemove={removeFromCart}
-            onClear={clearCart}
-            persisted
-          />
-        </div>
-      </header>
+      <SearchBar
+        keyword={keyword}
+        onKeywordChange={handleKeyword}
+        placeholder="Tìm sản phẩm... (thử: phone, laptop, watch)"
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <CategoryFilter selectedCategory={category} onSelectCategory={handleCategory} />
         <SortSelect value={sort} onChange={handleSort} />
       </div>
 
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <p className="text-sm text-slate-500">
         {debouncedKeyword.trim()
           ? `Tìm thấy ${total} sản phẩm cho từ khoá '${debouncedKeyword.trim()}'`
           : `Tổng ${total} sản phẩm`}
       </p>
 
-      {/* Giỏ nằm trên header nên lưới sản phẩm dùng trọn chiều ngang */}
-      <div ref={resultsRef} className="scroll-mt-24 space-y-6">
-        {loading ? (
-          <Spinner />
-        ) : error ? (
-          <ErrorBox message={error} />
-        ) : (
-          <>
-            <ProductGrid
-              products={products}
-              detailBasePath="/shop/products"
-              onAddToCart={addToCart}
-            />
-            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
-          </>
-        )}
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-6">
+          {loading ? (
+            <Spinner />
+          ) : error ? (
+            <ErrorBox message={error} />
+          ) : (
+            <>
+              <ProductGrid
+                products={products}
+                detailBasePath="/shop/products"
+                onAddToCart={addToCart}
+              />
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </>
+          )}
+        </div>
 
+        <div className="sticky top-6 h-fit">
+          <CartPanel
+            items={items}
+            onChangeQty={changeQty}
+            onRemove={removeFromCart}
+            onClear={clearCart}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -182,11 +155,54 @@ export default function ShopPage() {
   // Nếu để trong ShopList thì mỗi lần mở trang chi tiết rồi quay lại, component
   // đó bị unmount và state giỏ hàng mất sạch. Đặt state cao hơn chỗ điều hướng
   // là cách giữ giỏ hàng sống qua mọi lần chuyển trang.
-  //
-  // storageKey bật chế độ lưu xuống localStorage: giỏ hàng sống qua cả F5.
-  // Có đánh số phiên bản (:v1) để sau này đổi cấu trúc dòng giỏ hàng thì chỉ
-  // cần tăng lên :v2, dữ liệu cũ bị bỏ qua thay vì gây lỗi.
-  const cart = useCart({ storageKey: 'dummyjson:cart:v1' })
+  const [items, setItems] = useState([])
+
+  function addToCart(product) {
+    setItems((prev) => {
+      const existing = prev.find((it) => it.id === product.id)
+      if (existing) {
+        return prev.map((it) =>
+          it.id === product.id
+            ? { ...it, qty: Math.min(it.qty + 1, it.stock ?? MAX_QTY_WHEN_UNKNOWN) }
+            : it,
+        )
+      }
+      return [
+        ...prev,
+        {
+          id: product.id,
+          title: product.title,
+          price: product.price,
+          discountPercentage: product.discountPercentage,
+          stock: product.stock,
+          qty: 1,
+        },
+      ]
+    })
+  }
+
+  function changeQty(id, nextQty) {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? { ...it, qty: Math.max(1, Math.min(nextQty, it.stock ?? MAX_QTY_WHEN_UNKNOWN)) }
+          : it,
+      ),
+    )
+  }
+
+  function removeFromCart(id) {
+    setItems((prev) => prev.filter((it) => it.id !== id))
+  }
+
+  function clearCart() {
+    setItems([])
+  }
+
+  // Bốn hàm trên giống y hệt Câu 8 — cố ý lặp lại trong bản đơn giản này, để
+  // mỗi bài đọc độc lập được. Đúng lúc thấy việc copy này khó chịu là lúc nên
+  // gom chúng vào một custom hook (useCart) như bản đầy đủ đã làm.
+  const cart = { items, addToCart, changeQty, removeFromCart, clearCart }
 
   return (
     <Routes>

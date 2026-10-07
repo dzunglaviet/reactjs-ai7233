@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { API } from '../services/httpClient.js'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 1 — Fetch 8 sản phẩm trong useEffect, hiện title trong <ul>.
@@ -46,9 +47,9 @@ function ProductList() {
   if (error) return <ErrorBox message={error} />
 
   return (
-    <ul className="divide-y divide-slate-200 dark:divide-slate-700 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+    <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
       {products.map((product) => (
-        <li key={product.id} className="px-5 py-3 text-slate-700 dark:text-slate-300">
+        <li key={product.id} className="px-5 py-3 text-slate-700">
           {product.title}
         </li>
       ))}

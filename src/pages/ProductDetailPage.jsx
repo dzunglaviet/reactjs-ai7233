@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import ProductDetailView from '../components/product/ProductDetailView.jsx'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
+import ProductDetailView from '../components/ProductDetailView.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 import { fetchProductById } from '../services/productService.js'
 
 /**
@@ -45,7 +46,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link to="/shop" className="inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline">
+      <Link to="/shop" className="inline-block text-sm text-blue-600 hover:underline">
         ← Quay lại cửa hàng
       </Link>
 

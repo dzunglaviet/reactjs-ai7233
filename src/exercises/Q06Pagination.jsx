@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import CategoryFilter from '../components/product/CategoryFilter.jsx'
-import Pagination from '../components/product/Pagination.jsx'
-import ProductGrid from '../components/product/ProductGrid.jsx'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import CategoryFilter from '../components/CategoryFilter.jsx'
+import Pagination from '../components/Pagination.jsx'
+import ProductGrid from '../components/ProductGrid.jsx'
 import { fetchProducts } from '../services/productService.js'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 6 — Phân trang bằng limit + skip + total.
@@ -62,7 +63,7 @@ function ShopPage() {
     <div className="space-y-5">
       <CategoryFilter selectedCategory={category} onSelectCategory={handleSelectCategory} />
 
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <p className="text-sm text-slate-500">
         Tổng {total} sản phẩm — mỗi trang {PAGE_SIZE} sản phẩm
       </p>
 

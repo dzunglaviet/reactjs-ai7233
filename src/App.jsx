@@ -1,4 +1,4 @@
-import AppLayout from './components/layout/AppLayout.jsx'
+import AppLayout from './components/AppLayout.jsx'
 import AppRoutes from './routes/AppRoutes.jsx'
 
 /** App chỉ còn ghép bố cục với bảng route — mọi thứ khác đã tách ra file riêng. */

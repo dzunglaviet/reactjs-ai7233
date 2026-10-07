@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../services/httpClient.js'
-import ProductCard from '../components/product/ProductCard.jsx'
-import ExerciseLayout from '../components/layout/ExerciseLayout.jsx'
-import { ErrorBox, Spinner } from '../components/ui/index.js'
+import ProductCard from '../components/ProductCard.jsx'
+import ExerciseLayout from '../components/ExerciseLayout.jsx'
+import ErrorBox from '../components/ErrorBox.jsx'
+import Spinner from '../components/Spinner.jsx'
 
 // ---------------------------------------------------------------------------
 // CÂU 3 — Lọc theo danh mục, dữ liệu đi LÊN từ con.
@@ -28,7 +29,7 @@ function CategoryFilter({ selectedCategory, onSelectCategory }) {
 
   const base = 'rounded-full border px-3 py-1.5 text-sm transition'
   const activeCls = 'border-blue-600 bg-blue-600 text-white'
-  const idleCls = 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500'
+  const idleCls = 'border-slate-300 bg-white text-slate-600 hover:border-slate-400'
 
   return (
     <div className="flex flex-wrap gap-2">
